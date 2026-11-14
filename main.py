@@ -21,7 +21,6 @@ XUI_DB_PATH = "/etc/x-ui/x-ui.db"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 
-# Хранилище времени последнего запроса по IP (для защиты от спама)
 FREE_IP_LIMITS = {}
 PAID_IP_LIMITS = {}
 
@@ -37,7 +36,6 @@ def init_db():
             expires_at INTEGER DEFAULT 0
         )
     """)
-    # Добавляем колонку expires_at для существующей базы, если её ещё нет
     try:
         cur.execute("ALTER TABLE users ADD COLUMN expires_at INTEGER DEFAULT 0")
     except sqlite3.OperationalError:
@@ -50,7 +48,6 @@ init_db()
 
 
 def get_client_ip(request: Request) -> str:
-    # Получаем реальный IP пользователя через Cloudflare или напрямую
     cf_ip = request.headers.get("CF-Connecting-IP")
     if cf_ip:
         return cf_ip.strip()
@@ -77,7 +74,6 @@ def get_user(username: str, password: str):
     uname, old_days, expires_at = row[0], row[1], row[2]
     now = int(time.time())
 
-    # Переводим старых пользователей на автоматический таймер при первом входе
     if not expires_at or expires_at == 0:
         expires_at = now + (old_days * 86400)
         cur.execute("UPDATE users SET expires_at = ? WHERE username = ?", (expires_at, uname))
@@ -129,7 +125,6 @@ async def api_generate_key(
     user = get_user(username, password)
     is_paid = user is not None and user["days_left"] > 0
 
-    # Проверка защиты от спама
     if is_paid:
         last_req = PAID_IP_LIMITS.get(client_ip, 0)
         if now - last_req < 10:
@@ -154,13 +149,13 @@ async def api_generate_key(
 
         new_client = {
             "id": client_id,
-            "flow": "",
+            "flow": "xtls-rprx-vision",
             "email": email,
             "limitIp": 2 if is_paid else 1,
             "totalGB": total_gb_bytes,
             "expiryTime": 0,
             "enable": True,
-            "tgId": "",
+            "tgId": 0,
             "subId": ""
         }
 
@@ -185,12 +180,13 @@ async def api_generate_key(
 
         vless_key = (
             f"vless://{client_id}@45.83.24.18:443"
-            f"?encryption=mlkem768x25519plus.native.0rtt.GwRzUooVLudmEKQfsE4XsP3WPj4Gnjs9JFJOIHdv-Ao"
+            f"?encryption=none"
+            f"&flow=xtls-rprx-vision"
             f"&fp=chrome"
-            f"&pbk=HqlpqhydKAptgfDtshOFVNqlI0GxuC7NKETfUPDXRSw"
+            f"&pbk=UoyI6_MpqlaqATlk_gfR3eBXSyai3dZyKDWYsLxGJww"
             f"&security=reality"
-            f"&sid=b85f52aa04df6ed9"
-            f"&sni=microsoft.com"
+            f"&sid=8454a05293"
+            f"&sni=samsung.com"
             f"&spx=%2F8fbbcfe8969b423"
             f"&support-x25519mlkem768=true"
             f"&type=tcp"
