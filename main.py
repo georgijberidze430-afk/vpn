@@ -1,11 +1,13 @@
 import os
 import sys
+import time
 import json
+import math
 import sqlite3
 import logging
 import uuid
 import subprocess
-from fastapi import FastAPI, Form
+from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +21,10 @@ XUI_DB_PATH = "/etc/x-ui/x-ui.db"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "users.db")
 
+# Хранилище времени последнего запроса по IP (для защиты от спама)
+FREE_IP_LIMITS = {}
+PAID_IP_LIMITS = {}
+
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -27,14 +33,31 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
             password TEXT NOT NULL,
-            days_left INTEGER DEFAULT 30
+            days_left INTEGER DEFAULT 30,
+            expires_at INTEGER DEFAULT 0
         )
     """)
+    # Добавляем колонку expires_at для существующей базы, если её ещё нет
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN expires_at INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
 
 init_db()
+
+
+def get_client_ip(request: Request) -> str:
+    # Получаем реальный IP пользователя через Cloudflare или напрямую
+    cf_ip = request.headers.get("CF-Connecting-IP")
+    if cf_ip:
+        return cf_ip.strip()
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
 def get_user(username: str, password: str):
@@ -43,14 +66,28 @@ def get_user(username: str, password: str):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
-        "SELECT username, days_left FROM users WHERE username = ? AND password = ?",
+        "SELECT username, days_left, expires_at FROM users WHERE username = ? AND password = ?",
         (username.strip(), password.strip())
     )
     row = cur.fetchone()
+    if not row:
+        conn.close()
+        return None
+
+    uname, old_days, expires_at = row[0], row[1], row[2]
+    now = int(time.time())
+
+    # Переводим старых пользователей на автоматический таймер при первом входе
+    if not expires_at or expires_at == 0:
+        expires_at = now + (old_days * 86400)
+        cur.execute("UPDATE users SET expires_at = ? WHERE username = ?", (expires_at, uname))
+        conn.commit()
+
     conn.close()
-    if row:
-        return {"username": row[0], "days_left": row[1]}
-    return None
+
+    seconds_left = max(0, expires_at - now)
+    days_left = math.ceil(seconds_left / 86400) if seconds_left > 0 else 0
+    return {"username": uname, "days_left": days_left}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -78,6 +115,7 @@ async def api_login(username: str = Form(...), password: str = Form(...)):
 
 @app.post("/api/generate-key")
 async def api_generate_key(
+    request: Request,
     country: str = Form("se"),
     username: str = Form(""),
     password: str = Form("")
@@ -85,8 +123,28 @@ async def api_generate_key(
     if country != "se":
         return JSONResponse(status_code=400, content={"success": False, "error": "Эта локация скоро появится. Выберите Швецию."})
 
+    client_ip = get_client_ip(request)
+    now = time.time()
+
     user = get_user(username, password)
     is_paid = user is not None and user["days_left"] > 0
+
+    # Проверка защиты от спама
+    if is_paid:
+        last_req = PAID_IP_LIMITS.get(client_ip, 0)
+        if now - last_req < 10:
+            return JSONResponse(status_code=429, content={"success": False, "error": "Подождите 10 секунд перед созданием следующего ключа."})
+        PAID_IP_LIMITS[client_ip] = now
+    else:
+        last_req = FREE_IP_LIMITS.get(client_ip, 0)
+        if now - last_req < 86400:
+            hours_left = math.ceil((86400 - (now - last_req)) / 3600)
+            return JSONResponse(
+                status_code=429,
+                content={"success": False, "error": f"Бесплатный ключ можно получать 1 раз в сутки. Попробуйте снова через {hours_left} ч. или войдите в Premium."}
+            )
+        FREE_IP_LIMITS[client_ip] = now
+
     total_gb_bytes = 0 if is_paid else (3 * 1024 * 1024 * 1024)
 
     try:
@@ -151,9 +209,13 @@ if __name__ == "__main__":
         u_name = sys.argv[2]
         u_pass = sys.argv[3]
         u_days = int(sys.argv[4]) if len(sys.argv) > 4 else 30
+        expires = int(time.time()) + (u_days * 86400)
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
-        cur.execute("INSERT OR REPLACE INTO users (username, password, days_left) VALUES (?, ?, ?)", (u_name, u_pass, u_days))
+        cur.execute(
+            "INSERT OR REPLACE INTO users (username, password, days_left, expires_at) VALUES (?, ?, ?, ?)",
+            (u_name, u_pass, u_days, expires)
+        )
         conn.commit()
         conn.close()
         print(f"Пользователь {u_name} добавлен на {u_days} дн.")
