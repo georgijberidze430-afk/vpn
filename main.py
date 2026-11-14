@@ -4,7 +4,7 @@ import json
 import sqlite3
 import logging
 import uuid
-import httpx
+import subprocess
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 
@@ -13,11 +13,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="GiG VPN Server")
 
-# Точный адрес из адресной строки браузера
-PANEL_URL = "https://45.83.24.18:15999/hVlVlSDyhYHkDPBo0k"
 INBOUND_ID = 1
-PANEL_USERNAME = "GIG-ADMIN"
-PANEL_PASSWORD = "12Azzz5672814_GIG"
+XUI_DB_PATH = "/etc/x-ui/x-ui.db"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "users.db")
@@ -93,82 +90,60 @@ async def api_generate_key(
     total_gb_bytes = 0 if is_paid else (3 * 1024 * 1024 * 1024)
 
     try:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, verify=False) as client:
-                       headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "Origin": "https://45.83.24.18:15999",
-                "Referer": f"{PANEL_URL}/",
-                "X-Requested-With": "XMLHttpRequest"
-            }
+        client_id = str(uuid.uuid4())
+        prefix = f"pro_{user['username']}" if is_paid else "free"
+        email = f"{prefix}_{client_id[:6]}"
 
-            # Сначала заходим на страницу панели, чтобы получить куки
-            await client.get(f"{PANEL_URL}/", headers=headers)
+        new_client = {
+            "id": client_id,
+            "flow": "",
+            "email": email,
+            "limitIp": 2 if is_paid else 1,
+            "totalGB": total_gb_bytes,
+            "expiryTime": 0,
+            "enable": True,
+            "tgId": "",
+            "subId": ""
+        }
 
-            # Отправляем запрос на вход
-            login_resp = await client.post(
-                f"{PANEL_URL}/login",
-                data={"username": PANEL_USERNAME, "password": PANEL_PASSWORD},
-                headers=headers
-            )
+        conn = sqlite3.connect(XUI_DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT settings FROM inbounds WHERE id = ?", (INBOUND_ID,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return JSONResponse(status_code=500, content={"success": False, "error": "Подключение ID 1 не найдено в базе"})
 
-            try:
-                login_json = login_resp.json()
-            except Exception:
-                login_json = {}
+        settings = json.loads(row[0])
+        if "clients" not in settings:
+            settings["clients"] = []
+        settings["clients"].append(new_client)
 
-            if login_resp.status_code != 200 or not login_json.get("success"):
-                logger.error(f"Ошибка входа в 3x-ui: статус={login_resp.status_code}, ответ={login_resp.text}")
-                return JSONResponse(status_code=500, content={"success": False, "error": f"Панель не пустила ({login_resp.status_code})"})
+        cur.execute("UPDATE inbounds SET settings = ? WHERE id = ?", (json.dumps(settings), INBOUND_ID))
+        conn.commit()
+        conn.close()
 
-            client_id = str(uuid.uuid4())
-            prefix = f"pro_{user['username']}" if is_paid else "free"
-            email = f"{prefix}_{client_id[:6]}"
+        subprocess.run(["systemctl", "restart", "x-ui"], check=False)
 
-            client_settings = {
-                "clients": [
-                    {
-                        "id": client_id,
-                        "flow": "",
-                        "email": email,
-                        "limitIp": 2 if is_paid else 1,
-                        "totalGB": total_gb_bytes,
-                        "expiryTime": 0,
-                        "enable": True,
-                        "tgId": "",
-                        "subId": ""
-                    }
-                ]
-            }
+        vless_key = (
+            f"vless://{client_id}@45.83.24.18:443"
+            f"?encryption=mlkem768x25519plus.native.0rtt.GwRzUooVLudmEKQfsE4XsP3WPj4Gnjs9JFJOIHdv-Ao"
+            f"&fp=chrome"
+            f"&pbk=HqlpqhydKAptgfDtshOFVNqlI0GxuC7NKETfUPDXRSw"
+            f"&security=reality"
+            f"&sid=b85f52aa04df6ed9"
+            f"&sni=microsoft.com"
+            f"&spx=%2F8fbbcfe8969b423"
+            f"&support-x25519mlkem768=true"
+            f"&type=tcp"
+            f"#Sweden-VLESS-{email}"
+        )
 
-            add_resp = await client.post(
-                f"{PANEL_URL}/panel/api/inbounds/addClient",
-                json={"id": INBOUND_ID, "settings": json.dumps(client_settings)},
-                headers=headers
-            )
-
-            if add_resp.status_code != 200 or not add_resp.json().get("success"):
-                logger.error(f"Ошибка создания клиента: {add_resp.status_code} {add_resp.text}")
-                return JSONResponse(status_code=500, content={"success": False, "error": f"Ошибка создания ключа ({add_resp.status_code})"})
-
-            vless_key = (
-                f"vless://{client_id}@45.83.24.18:443"
-                f"?encryption=mlkem768x25519plus.native.0rtt.GwRzUooVLudmEKQfsE4XsP3WPj4Gnjs9JFJOIHdv-Ao"
-                f"&fp=chrome"
-                f"&pbk=HqlpqhydKAptgfDtshOFVNqlI0GxuC7NKETfUPDXRSw"
-                f"&security=reality"
-                f"&sid=b85f52aa04df6ed9"
-                f"&sni=microsoft.com"
-                f"&spx=%2F8fbbcfe8969b423"
-                f"&support-x25519mlkem768=true"
-                f"&type=tcp"
-                f"#Sweden-VLESS-{email}"
-            )
-
-            return {"success": True, "key": vless_key}
+        return {"success": True, "key": vless_key}
 
     except Exception as e:
         logger.error(f"Сбой генерации: {str(e)}")
-        return JSONResponse(status_code=500, content={"success": False, "error": f"Сбой соединения: {str(e)}"})
+        return JSONResponse(status_code=500, content={"success": False, "error": f"Ошибка базы панели: {str(e)}"})
 
 
 if __name__ == "__main__":
