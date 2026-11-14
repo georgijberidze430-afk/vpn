@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>GiG VPN Панель</title>
+<style>
+:root{--bg-color:#0f0f12;--card-bg:#16161e;--text-color:#ffffff;--accent-color:#00ff66;--btn-color:#248bed;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:var(--bg-color);color:var(--text-color);margin:0;padding:20px;display:flex;flex-direction:column;align-items:center;}
+.logo-container{text-align:center;margin-bottom:25px;margin-top:10px;}
+.logo-title{font-size:42px;font-weight:900;letter-spacing:2px;background:linear-gradient(45deg,#00ff66,#00bcff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin:0;}
+.logo-subtitle{font-size:14px;color:#777;margin-top:5px;text-transform:uppercase;}
+.card{background:var(--card-bg);padding:20px;border-radius:16px;width:100%;max-width:440px;box-sizing:border-box;margin-bottom:20px;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid #222;}
+h3{margin-top:0;color:#00bcff;font-size:18px;display:flex;align-items:center;gap:8px;}
+.user-status{display:flex;justify-content:space-between;margin:10px 0;font-size:15px;}
+.status-badge{background:#222;padding:3px 10px;border-radius:20px;font-size:13px;font-weight:bold;}
+.status-premium{color:var(--accent-color);border:1px solid var(--accent-color);}
+.auth-input{width:100%;padding:12px;margin-bottom:10px;border-radius:10px;border:1px solid #333;background:#0f0f12;color:#fff;box-sizing:border-box;font-size:14px;}
+.auth-input:focus{outline:none;border-color:#00bcff;}
+.login-btn{background:var(--btn-color);color:white;border:none;width:100%;padding:12px;border-radius:10px;font-weight:bold;font-size:15px;cursor:pointer;}
+.login-btn:hover{background:#1b76d1;}
+.logout-btn{background:transparent;color:#888;border:1px solid #333;width:100%;padding:8px;border-radius:8px;font-size:13px;cursor:pointer;margin-top:10px;}
+.countries-grid{display:flex;flex-direction:column;gap:10px;margin-top:15px;}
+.country-btn{display:flex;align-items:center;justify-content:space-between;background:#222530;color:white;padding:16px;border-radius:12px;border:1px solid #333;font-size:16px;font-weight:bold;cursor:pointer;transition:all 0.2s ease;text-align:left;}
+.country-btn:hover{border-color:#00bcff;background:#292d3d;transform:translateY(-1px);}
+.country-btn:active{transform:translateY(0);}
+.country-info{display:flex;align-items:center;gap:12px;}
+.country-flag{font-size:24px;}
+.country-arrow{color:#555;font-size:14px;}
+.instruction-step{font-size:14px;color:#b5b5bd;margin-bottom:12px;line-height:1.5;}
+.instruction-step strong{color:#fff;}
+.btn-support{background:#222;color:#ffbc00;border:1px solid #443c1c;text-align:center;text-decoration:none;display:block;padding:12px;border-radius:10px;font-weight:bold;}
+.btn-support:hover{background:#2c2c2c;}
+@keyframes gig-spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="logo-container">
+<h1 class="logo-title">GiG VPN</h1>
+<div class="logo-subtitle">Твой быстрый доступ к сети</div>
+</div>
+
+<div class="card" id="profile-card">
+<h3>👤 Личный кабинет (Premium)</h3>
+<div id="auth-zone">
+<p style="color:#aaa;font-size:13px;margin:5px 0 12px 0;">Бесплатный тариф (лимит 3 ГБ) доступен ниже без входа. Для безлимитного доступа войдите в аккаунт:</p>
+<input type="text" id="loginUser" class="auth-input" placeholder="Логин">
+<input type="password" id="loginPass" class="auth-input" placeholder="Пароль">
+<button class="login-btn" onclick="doLogin()">Войти в кабинет</button>
+</div>
+<div id="user-info-zone" style="display:none;">
+<div class="user-status"><span>Пользователь:</span><strong id="lbl-username"></strong></div>
+<div class="user-status"><span>Статус подписки:</span><span class="status-badge status-premium" id="lbl-status"></span></div>
+<div class="user-status"><span>Осталось дней:</span><strong id="lbl-days" style="color:#00bcff;"></strong></div>
+<button class="logout-btn" onclick="doLogout()">Выйти из аккаунта</button>
+</div>
+</div>
+
+<div class="card">
+<h3>🌐 Локации прокси-серверов</h3>
+<p style="font-size:13px;color:#888;margin:0;">Нажмите на нужную страну, чтобы мгновенно выпустить ключ.</p>
+<div class="countries-grid">
+<button class="country-btn" onclick="requestVpnKey('se')"><div class="country-info"><span class="country-flag">🇸🇪</span><span>Швеция (Stockholm)</span></div><span class="country-arrow">➔</span></button>
+<button class="country-btn" onclick="requestVpnKey('de')"><div class="country-info"><span class="country-flag">🇩🇪</span><span>Германия (Скоро)</span></div><span class="country-arrow">➔</span></button>
+<button class="country-btn" onclick="requestVpnKey('nl')"><div class="country-info"><span class="country-flag">🇳🇱</span><span>Нидерланды (Скоро)</span></div><span class="country-arrow">➔</span></button>
+</div>
+</div>
+<div class="card">
+<h3>📖 Как активировать на телефоне?</h3>
+<div style="border-bottom:1px solid #333;padding-bottom:10px;margin-bottom:10px;">
+<span style="color:#ff7b00;font-weight:bold;font-size:14px;">🤖 Для Android:</span>
+<div class="instruction-step">1. Скачайте приложение <strong>v2rayNG</strong> из Google Play.</div>
+<div class="instruction-step">2. Скопируйте ключ, сгенерированный выше.</div>
+<div class="instruction-step">3. Нажмите <strong>"+"</strong> сверху -> <strong>"Импортировать профиль из буфера обмена"</strong>.</div>
+<div class="instruction-step">4. Выберите сервер и нажмите круглую кнопку подключения внизу.</div>
+</div>
+<div>
+<span style="color:#00bcff;font-weight:bold;font-size:14px;">🍏 Для iPhone (iOS):</span>
+<div class="instruction-step">1. Установите приложение <strong>v2box</strong> или <strong>Streisand</strong> из App Store.</div>
+<div class="instruction-step">2. Скопируйте ключ на нашем сайте.</div>
+<div class="instruction-step">3. Откройте вкладку <strong>Configs</strong>, нажмите <strong>"+"</strong> -> <strong>"Import from clipboard"</strong>.</div>
+<div class="instruction-step">4. На главном экране переведите тумблер в состояние <strong>Connected</strong>.</div>
+</div>
+</div>
+
+<div class="card">
+<h3>🛠 Возникли вопросы?</h3>
+<p style="font-size:13px;color:#888;margin-bottom:15px;">Для покупки Premium-доступа или помощи с настройкой напишите нашему саппорту.</p>
+<a href="https://t.me" class="btn-support" target="_blank">Связаться с поддержкой</a>
+</div>
+
+<div id="gigKeyModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;">
+<div style="background:#16161e;border:2px solid #00ff66;padding:25px;border-radius:16px;width:100%;max-width:400px;text-align:center;color:#fff;box-shadow:0 10px 40px rgba(0,255,102,0.2);position:relative;box-sizing:border-box;">
+<h3 id="modalTitle" style="margin-top:0;color:#00ff66;font-size:20px;justify-content:center;width:100%;">Генерация ключа...</h3>
+<div id="modalLoader" style="margin:25px auto;width:45px;height:45px;border:4px solid #222;border-top:4px solid #00ff66;border-radius:50%;animation:gig-spin 1s linear infinite;"></div>
+<div id="modalResultBlock" style="display:none;">
+<p style="color:#b5b5bd;font-size:14px;margin-bottom:15px;line-height:1.4;">Ключ успешно создан! Нажмите на кнопку ниже, чтобы скопировать его:</p>
+<textarea id="vpnKeyText" readonly style="width:100%;height:90px;background:#09090d;color:#00bcff;border:1px solid #333;border-radius:8px;padding:10px;font-family:monospace;font-size:12px;resize:none;box-sizing:border-box;margin-bottom:20px;word-break:break-all;text-align:left;"></textarea>
+<button id="copyKeyBtn" style="background:#00ff66;color:#000;border:none;padding:14px;font-weight:bold;border-radius:10px;cursor:pointer;width:100%;font-size:15px;margin-bottom:10px;">📋 Скопировать ключ</button>
+</div>
+<button id="closeModalBtn" style="background:transparent;color:#777;border:1px solid #333;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:bold;">Закрыть</button>
+</div>
+</div>
+
+<script>
+window.addEventListener("DOMContentLoaded", function() {
+    var savedUser = localStorage.getItem("gig_user");
+    var savedPass = localStorage.getItem("gig_pass");
+    if (savedUser && savedPass) {
+        checkSavedAuth(savedUser, savedPass);
+    }
+});
+
+async function checkSavedAuth(u, p) {
+    var fd = new FormData();
+    fd.append("username", u);
+    fd.append("password", p);
+    try {
+        var res = await fetch("/api/login", { method: "POST", body: fd });
+        var data = await res.json();
+        if (data.success) {
+            showProfile(data);
+        } else {
+            doLogout();
+        }
+    } catch (e) {}
+}
+
+async function doLogin() {
+    var u = document.getElementById("loginUser").value.trim();
+    var p = document.getElementById("loginPass").value.trim();
+    if (!u || !p) { alert("Введите логин и пароль"); return; }
+    var fd = new FormData();
+    fd.append("username", u);
+    fd.append("password", p);
+    try {
+        var res = await fetch("/api/login", { method: "POST", body: fd });
+        var data = await res.json();
+        if (data.success) {
+            localStorage.setItem("gig_user", u);
+            localStorage.setItem("gig_pass", p);
+            showProfile(data);
+        } else {
+            alert(data.error || "Ошибка входа");
+        }
+    } catch (e) {
+        alert("Ошибка сети");
+    }
+}
+
+function showProfile(data) {
+    document.getElementById("auth-zone").style.display = "none";
+    document.getElementById("user-info-zone").style.display = "block";
+    document.getElementById("lbl-username").innerText = data.username;
+    document.getElementById("lbl-status").innerText = data.status;
+    document.getElementById("lbl-days").innerText = data.days_left;
+}
+
+function doLogout() {
+    localStorage.removeItem("gig_user");
+    localStorage.removeItem("gig_pass");
+    document.getElementById("auth-zone").style.display = "block";
+    document.getElementById("user-info-zone").style.display = "none";
+}
+
+async function requestVpnKey(countryCode) {
+    var modal = document.getElementById("gigKeyModal");
+    var modalTitle = document.getElementById("modalTitle");
+    var modalLoader = document.getElementById("modalLoader");
+    var modalResultBlock = document.getElementById("modalResultBlock");
+    modal.style.display = "flex";
+    modalTitle.innerText = "Генерация ключа...";
+    modalTitle.style.color = "#00bcff";
+    modalLoader.style.display = "block";
+    modalResultBlock.style.display = "none";
+
+    var formData = new FormData();
+    formData.append("country", countryCode);
+    formData.append("username", localStorage.getItem("gig_user") || "");
+    formData.append("password", localStorage.getItem("gig_pass") || "");
+
+    try {
+        var response = await fetch("/api/generate-key", { method: "POST", body: formData });
+        var data = await response.json();
+        if (data.success) {
+            modalLoader.style.display = "none";
+            modalResultBlock.style.display = "block";
+            modalTitle.innerText = "🚀 Готово!";
+            modalTitle.style.color = "#00ff66";
+            document.getElementById("vpnKeyText").value = data.key;
+        } else {
+            modalLoader.style.display = "none";
+            modalTitle.innerText = "Ошибка";
+            modalTitle.style.color = "#ff4444";
+            alert(data.error || "Не удалось получить ключ");
+        }
+    } catch (e) {
+        modalLoader.style.display = "none";
+        modalTitle.innerText = "Ошибка сети";
+        modalTitle.style.color = "#ff4444";
+        alert("Ошибка сети или сервера");
+    }
+}
+
+document.getElementById("copyKeyBtn").addEventListener("click", function() {
+    var keyTextarea = document.getElementById("vpnKeyText");
+    if (!keyTextarea || !keyTextarea.value) return;
+    navigator.clipboard.writeText(keyTextarea.value).then(function() {
+        var btn = document.getElementById("copyKeyBtn");
+        var originalText = btn.innerText;
+        btn.innerText = "✅ Ключ скопирован!";
+        btn.style.background = "#00bcff";
+        setTimeout(function() { btn.innerText = originalText; btn.style.background = "#00ff66"; }, 2000);
+    });
+});
+
+document.getElementById("closeModalBtn").addEventListener("click", function() {
+    document.getElementById("gigKeyModal").style.display = "none";
+});
+</script>
+</body>
+</html>
