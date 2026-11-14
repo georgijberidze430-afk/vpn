@@ -94,10 +94,11 @@ async def api_generate_key(
 
     try:
         async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, verify=False) as client:
-            headers = {
+                       headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
                 "Origin": "https://45.83.24.18:15999",
-                "Referer": f"{PANEL_URL}/"
+                "Referer": f"{PANEL_URL}/",
+                "X-Requested-With": "XMLHttpRequest"
             }
 
             # Сначала заходим на страницу панели, чтобы получить куки
