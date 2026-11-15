@@ -136,7 +136,7 @@ async def api_generate_key(
             hours_left = math.ceil((86400 - (now - last_req)) / 3600)
             return JSONResponse(
                 status_code=429,
-                content={"success": False, "error": f"Бесплатный ключ можно получать 1 раз в сутки. Попробуйте снова через {hours_left} ч. или войдите в Premium."}
+                content={"success": False, "error": f"Бесплатный ключ можно получать 1 раз в сутки. Попробуйте снова через {hours_left} ч."}
             )
         FREE_IP_LIMITS[client_ip] = now
 
@@ -159,13 +159,13 @@ async def api_generate_key(
             "subId": ""
         }
 
-        conn = sqlite3.connect(XUI_DB_PATH)
+        conn = sqlite3.connect(XUI_DB_PATH, timeout=15.0)
         cur = conn.cursor()
         cur.execute("SELECT settings FROM inbounds WHERE id = ?", (INBOUND_ID,))
         row = cur.fetchone()
         if not row:
             conn.close()
-            return JSONResponse(status_code=500, content={"success": False, "error": "Подключение ID 1 не найдено в базе"})
+            return JSONResponse(status_code=500, content={"success": False, "error": f"Подключение ID {INBOUND_ID} не найдено в базе"})
 
         settings = json.loads(row[0])
         if "clients" not in settings:
@@ -176,17 +176,18 @@ async def api_generate_key(
         conn.commit()
         conn.close()
 
-        subprocess.run(["systemctl", "restart", "x-ui"], check=False)
+        # Фоновый перезапуск без задержки ответа пользователю
+        subprocess.Popen(["systemctl", "restart", "x-ui"])
 
         vless_key = (
             f"vless://{client_id}@45.83.24.18:8443"
             f"?encryption=none"
             f"&flow=xtls-rprx-vision"
             f"&fp=chrome"
-            f"&pbk=wCyJFML_o2zRiVubWAu7Iht2djeC8SMTUqPYva_XMyg"
+            f"&pbk=wCyJFML_o2zRiVubWAu7Ilh2dJeC8SMTUqPYva_XMyg"
             f"&security=reality"
             f"&sid=8454a05293"
-            f"&sni=google.com"
+            f"&sni=://google.com"
             f"&spx=%2Fb42Rsr4trOdVSEh"
             f"&type=tcp"
             f"#GiG-Sweden-{email}"
