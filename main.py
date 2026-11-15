@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="GiG VPN Server")
 
-INBOUND_ID = 1
+INBOUND_ID = 2
 XUI_DB_PATH = "/etc/x-ui/x-ui.db"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
