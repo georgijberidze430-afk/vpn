@@ -178,7 +178,7 @@ async def api_generate_key(
 
         subprocess.run(["systemctl", "restart", "x-ui"], check=False)
 
-                vless_key = (
+        vless_key = (
             f"vless://{client_id}@45.83.24.18:8443"
             f"?encryption=none"
             f"&flow=xtls-rprx-vision"
