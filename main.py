@@ -186,7 +186,7 @@ async def api_generate_key(
             f"&pbk=wCyJFML_o2zRiVubWAu7Iht2djeC8SMTUqPYva_XMyg"
             f"&security=reality"
             f"&sid=8454a05293"
-            f"&sni=www.ozon.ru"
+            f"&sni=google.com"
             f"&spx=%2Fb42Rsr4trOdVSEh"
             f"&type=tcp"
             f"#GiG-Sweden-{email}"
