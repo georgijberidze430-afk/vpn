@@ -178,19 +178,18 @@ async def api_generate_key(
 
         subprocess.run(["systemctl", "restart", "x-ui"], check=False)
 
-        vless_key = (
+                vless_key = (
             f"vless://{client_id}@45.83.24.18:8443"
             f"?encryption=none"
             f"&flow=xtls-rprx-vision"
             f"&fp=chrome"
-            f"&pbk=UoyI6_MpqlaqATlk_gfR3eBXSyai3dZyKDWYsLxGJww"
+            f"&pbk=wCyJFML_o2zRiVubWAu7Iht2djeC8SMTUqPYva_XMyg"
             f"&security=reality"
             f"&sid=8454a05293"
-            f"&sni=samsung.com"
-            f"&spx=%2F8fbbcfe8969b423"
-            f"&support-x25519mlkem768=true"
+            f"&sni=www.ozon.ru"
+            f"&spx=%2Fb42Rsr4trOdVSEh"
             f"&type=tcp"
-            f"#Sweden-VLESS-{email}"
+            f"#GiG-Sweden-{email}"
         )
 
         return {"success": True, "key": vless_key}
