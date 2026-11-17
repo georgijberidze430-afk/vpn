@@ -187,7 +187,7 @@ async def api_generate_key(
             f"&pbk=wCyJFML_o2zRiVubWAu7Ilh2dJeC8SMTUqPYva_XMyg"
             f"&security=reality"
             f"&sid=8454a05293"
-            f"&sni=www.apple.com"
+            f"&sni=images.apple.com"
             f"&spx=%2Fb42Rsr4trOdVSEh"
             f"&type=tcp"
             f"#GiG-Sweden-{email}"
