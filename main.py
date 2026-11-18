@@ -179,21 +179,17 @@ async def api_generate_key(
         # Фоновый перезапуск без задержки ответа пользователю
         subprocess.Popen(["systemctl", "restart", "x-ui"])
 
-        # ВАЖНО: Reality-параметры ниже ДОЛЖНЫ совпадать с настройками на вашем VPS!
-        # pbk  = public key (из xray config Reality)
-        # sid  = short ID (из xray config Reality)
-        # sni  = SNI target (домен, который маскирует трафик)
-        # spx  = path для XHTTP mode (должен совпадать с Xray)
+        # ВАЖНО: pbk (public key) должен совпадать с privateKey из вашего VPS!
+        # В данный момент pbk может быть НЕВЕРНЫМ — это причина "reality verification failed"
         vless_key = (
             f"vless://{client_id}@45.83.24.18:8443"
             f"?encryption=none"
             f"&flow=xtls-rprx-vision"
             f"&fp=chrome"
-            f"&pbk=wCyJFML_o2zRiVubWAu7Ilh2dJeC8SMTUqPYva_XMyg"
+            f"&pbk=wCyJFML_o2zRiVubWAu7Iht2djeC8SMTUqPYva_XMyg"
             f"&security=reality"
             f"&sid=8454a05293"
             f"&sni=images.apple.com"
-            f"&spx=%2Fb42Rsr4trOdVSEh"
             f"&type=tcp"
             f"&padding=1"
             f"#GiG-Sweden-{email}"
