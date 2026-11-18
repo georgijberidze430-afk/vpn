@@ -156,7 +156,7 @@ async def api_generate_key(
             "expiryTime": 0,
             "enable": True,
             "tgId": 0,
-            "subId": ""
+            "subId": client_id
         }
 
         conn = sqlite3.connect(XUI_DB_PATH, timeout=15.0)
@@ -179,6 +179,11 @@ async def api_generate_key(
         # Фоновый перезапуск без задержки ответа пользователю
         subprocess.Popen(["systemctl", "restart", "x-ui"])
 
+        # ВАЖНО: Reality-параметры ниже ДОЛЖНЫ совпадать с настройками на вашем VPS!
+        # pbk  = public key (из xray config Reality)
+        # sid  = short ID (из xray config Reality)
+        # sni  = SNI target (домен, который маскирует трафик)
+        # spx  = path для XHTTP mode (должен совпадать с Xray)
         vless_key = (
             f"vless://{client_id}@45.83.24.18:8443"
             f"?encryption=none"
@@ -190,6 +195,7 @@ async def api_generate_key(
             f"&sni=images.apple.com"
             f"&spx=%2Fb42Rsr4trOdVSEh"
             f"&type=tcp"
+            f"&padding=1"
             f"#GiG-Sweden-{email}"
         )
 
