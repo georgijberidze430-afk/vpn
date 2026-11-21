@@ -186,7 +186,7 @@ async def api_generate_key(
             f"?encryption=none"
             f"&flow=xtls-rprx-vision"
             f"&fp=chrome"
-            f"&pbk=wCyJFML_o2zRiVubWAu7Iht2djeC8SMTUqPYva_XMyg"
+            f"&pbk=WCKU6i8FDEnTd6wyHI6zTWqXYNv7ScBbrcWmuXfNCkQ"
             f"&security=reality"
             f"&sid=8454a05293"
             f"&sni=images.apple.com"
